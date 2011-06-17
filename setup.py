@@ -24,9 +24,12 @@ setup(name='pretaweb.healthcheck',
       zip_safe=False,
       install_requires=[
           'setuptools',
+	  'plone.subrequest',
           # -*- Extra requirements: -*-
       ],
       entry_points="""
       # -*- Entry points: -*-
+      [z3c.autoinclude.plugin]
+      target = plone
       """,
       )

@@ -1,0 +1,17 @@
+<?xml version="1.0" ?>
+
+<configure
+    xmlns="http://namespace.zope.org/five"
+    xmlns:browser="http://namespaces.zope.org/browser">
+
+
+    <browser:page
+        for="*"
+	name="healthcheck"
+	class=".healthcheck.HealthCheck"
+	permission="zope2.View"
+        />
+
+    
+
+</configure>
