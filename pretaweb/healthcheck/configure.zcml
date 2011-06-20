@@ -8,7 +8,7 @@
     <browser:page
         for="*"
 	name="healthcheck"
-	class=".healthcheck.HealthCheck"
+	class=".HealthCheck.HealthCheck"
 	permission="zope2.View"
         />
 
