@@ -7,7 +7,7 @@ from zope.component import getMultiAdapter
 from plone.subrequest import subrequest
 
 
-plonesWoke = False
+healthCheckDone = False
 
 
 class RequestError (Exception): pass
@@ -16,11 +16,42 @@ class RequestError (Exception): pass
 class HealthCheck (BrowserView):
 
 
+    def wakePlone (self, plone):
+        """Pre-caching mechenisim for plones sites. By making sub requests
+        to bring objects into memory"""
+        output = self.output
 
-    def wakePlones (self, output):
-        """Pre-caching mechenisim for plones sites"""
 
-	context = self.context
+        # Request the front page
+
+        url_path = "/".join (plone.getPhysicalPath())
+        response = subrequest(url_path)
+        status = int(response.getStatus())
+
+        output.write("%s\n" % url_path)
+        output.write("\tHTTP status: %s\n" % status)
+
+        if status >= 400 and status != 401:
+            # Bad news - 4xx (client) and 5xx (server) errors.
+            # With the exception of 401 for unautherized access
+            # which is an acceptable error
+            raise RequestError()
+
+
+        # Process output
+
+        body = response.getBody()
+        output.write ("\tfront page size: %s\n" % len(body))
+
+
+
+
+    def traverse (self):
+        context = self.context
+        output = self.output
+
+
+        # Discovery
 
         def findPlones (context):
             plones = context.objectValues("Plone Site")
@@ -29,77 +60,81 @@ class HealthCheck (BrowserView):
                 plones += findPlones(folder)
             return plones
 
-	plones = findPlones(context)
-
+        plones = findPlones(context)
         output.write ("%s site(s) found.\n" % len(plones))
 
+
+        # Wake-up time
+
         for p in plones:
-	    url_path = "/".join (p.getPhysicalPath())
+            self.wakePlone (p)
 
-	    response = subrequest(url_path)
-	    status = int(response.getStatus())
 
-	    output.write("%s\n" % url_path)
-	    output.write("\tHTTP status: %s\n" % status)
 
-	    if status >= 400 and status != 401:
-	        # Bad news - 4xx (client) and 5xx (server) errors.
-	        # With the exception of 401 for unautherized access
-	        # which is an acceptable error
 
-	        raise RequestError()
+    def healthStatus (self):
+        global healthCheckDone
+        output = self.output
 
-	    body = response.getBody()
-	    output.write ("\tfront page size: %s\n" % len(body))
+
+        # healthCheckDone doesn't persist application restarts, 
+        # so this ensures that the health check is only done
+        # on the first poll
+        if healthCheckDone:
+            output.write("Health check already done.\n")
+            status = 200
+
+        else:
+            output.write ("Good morning Plone world! Checking health...\n")
+
+            try:
+                # Do healthChecks
+                self.traverse()
+
+            except:
+                # Instance not healthy
+                output.write ("Exception raised during health check. See instance logs more details.\n")
+                status = 503
+                plonesWoke = False
+
+                sys.stderr.write("Exception raised during health check. (pretaweb.healthcheck)")
+                traceback.print_exc(file=sys.stderr)
+
+            else:
+                output.write ("Finished health check.\n")
+                status = 200
+                healthCheckDone = True
+
+        return status
 
 
 
 
     def __call__ (self):
-        global plonesWoke
-        context = self.context
-	output = StringIO()
-
-        if plonesWoke:
-	    output.write("Plone sites already woken.\n")
-	    returnStatus = 200
-
-	else:
-	    # Plone Waking: the purpas is to force zope to bring
-	    # needed objects into it's cache as a way of precaching.
-
-	    output.write ("Good morning Plone world! Waking Plone sites...\n")
-
-	    try:
-	        self.wakePlones(output)
-
-	    except:
-	        output.write ("Error in waking Plone sites. See instance logs more details.\n")
-	        returnStatus = 503
-	        plonesWoke = False
-
-	        sys.stderr.write("Error in waking Plone sites. (pretaweb.healthcheck)")
-	        traceback.print_exc(file=sys.stderr)
-
-	    else:
-	        output.write ("Done waking Plone sites.\n")
-	        returnStatus = 200
-	        plonesWoke = True
 
 
-	# Construst Response
+        # Contextual Setup
 
-	response = self.request.response
-	response.setStatus (returnStatus)
-	response.setHeader ("Content-type:", "text/plain")
+        self.output = StringIO()
 
-        if returnStatus == 200:
-	    body = "200 OK\n" + output.getvalue()
-	elif returnStatus == 503:
-	    body = "503 Service Unavailable\n" + output.getvalue()
-	else:
-	    raise Exception("Invalid returnStatus")
 
-	return body
-	
-	    
+        # Get status
+
+        status = self.healthStatus ()
+
+
+        # Construst Response
+
+        response = self.request.response
+        response.setStatus (status)
+        response.setHeader ("Content-type:", "text/plain")
+        responseLine = "%s %s\n" % (
+                status,
+                { 200:"OK", 503:"Service Unavailable" }.get(status, "") )
+
+        return responseLine + self.output.getvalue()
+        
+            
+
+
+
