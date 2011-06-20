@@ -24,8 +24,9 @@ setup(name='pretaweb.healthcheck',
       zip_safe=False,
       install_requires=[
           'setuptools',
-	  'plone.subrequest',
           # -*- Extra requirements: -*-
+	  'plone.subrequest',
+	  'lxml',
       ],
       entry_points="""
       # -*- Entry points: -*-
