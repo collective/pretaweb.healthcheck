@@ -13,9 +13,6 @@ from plone.subrequest import subrequest
 healthCheckDone = False
 
 
-cssImportPatern = re.compile (r"@import\s+url\(([^)]+)\)\s*;")
-
-
 class RequestError (Exception): pass
 
 
@@ -60,9 +57,85 @@ class HealthCheck (BrowserView):
 
 
 
+    def wakeResources (self, resources):
+        output = self.output
+        byteCount = 0
+        
+        for url in resources:
+            response = subrequest(url)
+            status = response.getStatus()
+            if status == 200:
+                body = response.getBody()
+                byteCount += len(body)
+
+                # output.write ("\tGot status %s for resource: %s\n" % (status, url))
+
+            else:
+                output.write ("\tGot status %s for resource: %s\n" % (status, url))
+
+        return byteCount
+
+
+
+
+    def wakeCssResources (self, resources, alreadyDone):
+        output = self.output
+        byteCount = 0
+        urlResources = set()
+        cssURLResourcePattern = re.compile (r"url\('?([^')]+)'?\)")
+
+        # Get css resources and parse for url(...) directives
+
+        for url in resources:
+            response = subrequest(url)
+            status = response.getStatus()
+
+            if status == 200:
+
+                # output.write ("\tGot status %s for resource: %s\n" % (status, url))
+
+
+                # get CSS working path
+                workingPath = url.split("/")
+                workingPath.pop()
+                workingPath = self.request.base + "/".join (workingPath)
+
+
+                # parse CSS body
+                body = response.getBody()
+                byteCount += len(body)
+
+
+                # parse URLs
+                foundURLs = []
+                for mo in cssURLResourcePattern.finditer(body):
+                    groups = mo.groups()
+                    if len(groups) > 0:
+                        foundURLs.append(groups[0])
+                urlResources = urlResources.union ( self.parseLinks(workingPath, foundURLs) )
+
+
+
+            else:
+                output.write ("\tGot status %s for resource: %s\n" % (status, url))
+
+
+        # wake those extra resources
+
+        alreadyDone = alreadyDone.union (resources)
+        urlRresources = urlResources.difference (alreadyDone)
+        output.write ("\tFound %s resources referenced from CSS\n" % len(urlResources))
+        byteCount += self.wakeResources (urlResources)
+
+
+        return byteCount
+        
+
+
     def wakePlone (self, plone):
         """Pre-caching mechenisim for plones sites. By making sub requests
         to bring objects into memory"""
+        cssImportPattern = re.compile (r"@import\s+url\(([^)]+)\)\s*;")
         output = self.output
 
 
@@ -99,31 +172,23 @@ class HealthCheck (BrowserView):
             scripts = doc.xpath ("/html//script/@src")
 
             cssImports = []
-            for mo in cssImportPatern.finditer(body):
+            for mo in cssImportPattern.finditer(body):
                 groups = mo.groups()
                 if len(groups) > 0:
                     cssImports.append(groups[0])
 
             resources = self.parseLinks (url_path, links)
             resources = resources.union( self.parseLinks (url_path, images) )
-            resources = resources.union( self.parseLinks (url_path, headLink) )
             resources = resources.union( self.parseLinks (url_path, scripts) )
-            resources = resources.union( self.parseLinks (url_path, cssImports) )
 
             output.write ("\tFound %s sub resources to load.\n" % len(resources))
+            byteCount += self.wakeResources (resources)   
 
-            for resURL in resources:
-                resResponse = subrequest(resURL)
-                resStatus = resResponse.getStatus()
-                if resStatus == 200:
-                    resBody = resResponse.getBody()
-                    byteCount += len(resBody)
+            cssResources = self.parseLinks (url_path, headLink)
+            cssResources = cssResources.union( self.parseLinks (url_path, cssImports) )
 
-                    # output.write ("\tGot status %s for resource: %s\n" % (resStatus, resURL))
-
-                else:
-                    output.write ("\tGot status %s for resource: %s\n" % (resStatus, resURL))
-                
+            output.write ("\tFound %s css resources to load.\n" % len(cssResources) )
+            byteCount += self.wakeCssResources (cssResources, alreadyDone=resources)
 
         output.write ("\tNumber of bytes retrieved: %s\n" % len(body))
 
