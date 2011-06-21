@@ -1,22 +1,25 @@
 Introduction
 ============
 
-Providing a mecenisim to front-end load ballencers to check
-wether a Zope instance with one or more Plone sites installed
-is sutiable for sending requests to.
+Provides a mechanism to front-end load balancers to check whether a Zope
+instance with one or more Plone sites installed is suitable for sending
+requests to.
 
-Exposes a @@healthcheck browser view. When called it will 
-treverse the ZODB for Plone instences makeing sub requests
-to their front page. Theirby forcing Zope to load Plone
-objects, this therefore works as a pre-cache mechinisim in
-order to reduce the time spent on the first request once
-the instance has become available to the load ballencer.
-The browser view will return a status of 200 meaing 
-that the Plone sites have all "woken up" or 503 meaning
-there was an error in loading at least one of the Plone
-sites.  On successive polls, the browser view returns
-200 if it has been allready run successivly, or tries
-to pre-cache again if it has not yet been successifully run.
+Exposes a @@healthcheck browser view. When called the health checker traverses
+the ZODB for Plone instances and performs a health check looking for a http
+status of 200 OK 401 Unauthorised access. Unauthorised access is valid because
+a restricted Plone site is a valid situation.
+
+The health check also acts as a pre-caching mechanism in order to speed up
+first the requests after an instance started. This is used to ensure the Pone
+sites and their resources are loaded into memory before a load balancer decides
+that the instance is ok for sending requests to. The health checker does this
+by parsing the front page for images, CSS and Java Script; as well as parsing
+the CSS for it's related resources as well.
+
+Subsequent requests to the health checker return 200 OK without doing any ZODB
+traversing - there by only doing a health check once every start.
+
 
 Examples:
 
