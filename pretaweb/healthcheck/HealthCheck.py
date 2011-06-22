@@ -40,9 +40,10 @@ class HealthCheck (BrowserView):
             if len(l) > 0:
                 l = l.split("#")[0]
                 l = urllib.unquote(l)
-                l = l.split("?")[0] # remove query strings
                 if l[0] == "/":
                     l = protocol + "://" + host + l
+                if l.endswith("/"):
+                    l = l[:-1]
 
 
                 # Link same as base - ignore
@@ -64,7 +65,7 @@ class HealthCheck (BrowserView):
 
                 # Other URLs
                 else:
-		    if self.verbose:
+                    if self.verbose:
                         output.write ("\tResource out of scope: %s\n" % l)
 
 
@@ -85,7 +86,12 @@ class HealthCheck (BrowserView):
                 byteCount += len(body)
 
                 if self.verbose:
-		    output.write ("\tGot status %s for resource: %s\n" % (status, url))
+                    output.write ("\tGot status %s for resource: %s\n" % (status, url))
+
+            elif status >= 500:
+                output.write ("\tGot status %s for resource: %s\n" % (status, url))
+                if not self.ignoreResourceServerError:
+                    raise ServerError ()
 
             else:
                 output.write ("\tGot status %s for resource: %s\n" % (status, url))
@@ -109,30 +115,40 @@ class HealthCheck (BrowserView):
 
             if status == 200:
 
-		if self.verbose:
+                if self.verbose:
                     output.write ("\tGot status %s for resource: %s\n" % (status, url))
 
+                # detect if document is CSS
+                if (url.endswith (".css")
+                        or response.getHeader("content-type").startswith("text/css")) and not url.endswith(".kss"):
 
-                # get CSS working path
-                workingPath = url.split("/")
-                workingPath.pop()
-                workingPath = self.request.base + "/".join (workingPath)
-
-
-                # parse CSS body
-                body = response.getBody()
-                byteCount += len(body)
+                    # get CSS working path
+                    workingPath = url.split("/")
+                    workingPath.pop()
+                    workingPath = self.request.base + "/".join (workingPath)
 
 
-                # parse URLs
-                foundURLs = []
-                for mo in cssURLResourcePattern.finditer(body):
-                    groups = mo.groups()
-                    if len(groups) > 0:
-                        foundURLs.append(groups[0])
-                urlResources = urlResources.union ( self.parseLinks(workingPath, foundURLs) )
+                    # parse CSS body
+                    body = response.getBody()
+                    byteCount += len(body)
 
 
+                    # parse URLs
+                    foundURLs = []
+                    for mo in cssURLResourcePattern.finditer(body):
+                        groups = mo.groups()
+                        if len(groups) > 0:
+                            foundURLs.append(groups[0])
+                    urlResources = urlResources.union ( self.parseLinks(workingPath, foundURLs) )
+
+                else:
+                    output.write ("\tNot a CSS document: %s\n" % url)
+
+
+            elif status >= 500:
+                output.write ("\tGot status %s for resource: %s\n" % (status, url))
+                if not self.ignoreResourceServerError:
+                    raise ServerError ()
 
             else:
                 output.write ("\tGot status %s for resource: %s\n" % (status, url))
@@ -204,6 +220,7 @@ class HealthCheck (BrowserView):
 
             cssResources = self.parseLinks (url_path, headLink)
             cssResources = cssResources.union( self.parseLinks (url_path, cssImports) )
+            cssResources = cssResources.difference (resources)
 
             output.write ("\tFound %s css resources to load.\n" % len(cssResources) )
             byteCount += self.wakeCssResources (cssResources, alreadyDone=resources)
@@ -286,7 +303,8 @@ class HealthCheck (BrowserView):
         # Contextual Setup
 
         self.output = StringIO()
-	self.verbose = self.request.get("verbose", False)
+        self.verbose = self.request.get("verbose", False)
+        self.ignoreResourceServerError = self.request.get("ignoreResourceServerError")
 
 
         # Get status
