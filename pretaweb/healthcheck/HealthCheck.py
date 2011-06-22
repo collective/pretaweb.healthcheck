@@ -25,29 +25,43 @@ class HealthCheck (BrowserView):
         base = self.request.base
         workingURL = base + workingPath
         output = self.output
+        host = self.environ.get("HTTP_HOST")
+        
+
+        if self.request.environ.get("HTTPS", False):
+            protocol = "https"
+        else:
+            protocol = "http"
+
 
         newLinks = set()
         for l in links:
             if len(l) > 0:
                 l = l.split("#")[0]
                 l = urllib.unquote(l)
-
+                l = l.split("?")[0] # remove query strings
                 if l[0] == "/":
-                    l = base + l
+                    l = protocol + "://" + host + l
 
-                elif workingURL == l:
+
+                # Link same as base - ignore
+                if workingURL == l:
                     pass
 
+                # Absolute URL - add without base
                 elif l.startswith(base):
                     p = l[len(base):]
                     newLinks.add (p)
 
 
+                # Relative URL - add with workingURL 
                 elif not (l.startswith("http://") or l.startswith("https://")):
                     ll = workingURL + "/" + l
                     p = ll[len(base):]
                     newLinks.add(p)
 
+
+                # Other URLs
                 else:
                     output.write ("\tResource out of scope: %s\n" % l)
 
@@ -232,7 +246,7 @@ class HealthCheck (BrowserView):
         # healthCheckDone doesn't persist application restarts, 
         # so this ensures that the health check is only done
         # on the first poll
-        if healthCheckDone:
+        if healthCheckDone and not self.request.get("force") == "yes":
             output.write("Health check already done.\n")
             status = 200
 
