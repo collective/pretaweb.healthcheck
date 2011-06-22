@@ -118,6 +118,9 @@ class HealthCheck (BrowserView):
                 if self.verbose:
                     output.write ("\tGot status %s for resource: %s\n" % (status, url))
 
+                body = response.getBody()
+                byteCount += len(body)
+
                 # detect if document is CSS
                 if (url.endswith (".css")
                         or response.getHeader("content-type").startswith("text/css")) and not url.endswith(".kss"):
@@ -126,11 +129,6 @@ class HealthCheck (BrowserView):
                     workingPath = url.split("/")
                     workingPath.pop()
                     workingPath = self.request.base + "/".join (workingPath)
-
-
-                    # parse CSS body
-                    body = response.getBody()
-                    byteCount += len(body)
 
 
                     # parse URLs
