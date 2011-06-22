@@ -14,6 +14,7 @@ healthCheckDone = False
 
 
 class RequestError (Exception): pass
+class ServerError (RequestError): pass
 
 
 class HealthCheck (BrowserView):
@@ -25,7 +26,7 @@ class HealthCheck (BrowserView):
         base = self.request.base
         workingURL = base + workingPath
         output = self.output
-        host = self.environ.get("HTTP_HOST")
+        host = self.request.environ.get("HTTP_HOST")
         
 
         if self.request.environ.get("HTTPS", False):
@@ -63,7 +64,8 @@ class HealthCheck (BrowserView):
 
                 # Other URLs
                 else:
-                    output.write ("\tResource out of scope: %s\n" % l)
+		    if self.verbose:
+                        output.write ("\tResource out of scope: %s\n" % l)
 
 
         return newLinks
@@ -82,7 +84,8 @@ class HealthCheck (BrowserView):
                 body = response.getBody()
                 byteCount += len(body)
 
-                # output.write ("\tGot status %s for resource: %s\n" % (status, url))
+                if self.verbose:
+		    output.write ("\tGot status %s for resource: %s\n" % (status, url))
 
             else:
                 output.write ("\tGot status %s for resource: %s\n" % (status, url))
@@ -106,7 +109,8 @@ class HealthCheck (BrowserView):
 
             if status == 200:
 
-                # output.write ("\tGot status %s for resource: %s\n" % (status, url))
+		if self.verbose:
+                    output.write ("\tGot status %s for resource: %s\n" % (status, url))
 
 
                 # get CSS working path
@@ -282,6 +286,7 @@ class HealthCheck (BrowserView):
         # Contextual Setup
 
         self.output = StringIO()
+	self.verbose = self.request.get("verbose", False)
 
 
         # Get status
