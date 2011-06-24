@@ -1,11 +1,11 @@
 from setuptools import setup, find_packages
 import os
 
-version = '0.1'
+version = '1.0'
 
 setup(name='pretaweb.healthcheck',
       version=version,
-      description="Health Checker for a Multi Tenant Plone Zope Instance",
+      description="Load balancer health checker for a Plone/Zope Instance",
       long_description=open("README.txt").read() + "\n" +
                        open(os.path.join("docs", "HISTORY.txt")).read(),
       # Get more strings from
@@ -13,11 +13,11 @@ setup(name='pretaweb.healthcheck',
       classifiers=[
         "Programming Language :: Python",
         ],
-      keywords='Zope Plone load-balancing health-check',
+      keywords='Zope Plone load-balancing health-check haproxy',
       author='Adam Terrey',
       author_email='software@pretaweb.com',
-      url='http://www.pretaweb.com',
-      license='NONE',
+      url='https://github.com/collective/pretaweb.healthcheck',
+      license='GPL',
       packages=find_packages(exclude=['ez_setup']),
       namespace_packages=['pretaweb'],
       include_package_data=True,
@@ -34,3 +34,4 @@ setup(name='pretaweb.healthcheck',
       target = plone
       """,
       )
+

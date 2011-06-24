@@ -265,7 +265,7 @@ class HealthCheck (BrowserView):
         # healthCheckDone doesn't persist application restarts, 
         # so this ensures that the health check is only done
         # on the first poll
-        if healthCheckDone and not self.request.get("force") == "yes":
+        if healthCheckDone:
             output.write("Health check already done.\n")
             status = 200
 
@@ -278,7 +278,7 @@ class HealthCheck (BrowserView):
 
             except:
                 # Instance not healthy
-                output.write ("Exception raised during health check. See instance logs more details.\n")
+                output.write ("Exception raised during health check.\n")
                 status = 503
                 plonesWoke = False
 
@@ -300,13 +300,14 @@ class HealthCheck (BrowserView):
 
         # Contextual Setup
 
-        self.output = StringIO()
-        self.verbose = self.request.get("verbose", False)
-        self.ignoreResourceServerError = self.request.get("ignoreResourceServerError")
+        self.output = sys.stderr
+        self.verbose = self.request.get("verbose", False) == "yes"
+        self.ignoreResourceServerError = self.request.get("ignoreResourceServerError") == "yes"
 
 
         # Get status
 
+	self.output.write("pretaweb.healthcheck checking health:\n")
         status = self.healthStatus ()
 
 
@@ -319,7 +320,9 @@ class HealthCheck (BrowserView):
                 status,
                 { 200:"OK", 503:"Service Unavailable" }.get(status, "") )
 
-        return responseLine + self.output.getvalue()
+        self.output.write ("pretaweb.healthcheck result: " + responseLine)
+
+        return responseLine
         
             
 

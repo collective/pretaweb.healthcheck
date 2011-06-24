@@ -1,7 +1,25 @@
 Changelog
 =========
 
+
+1.0 (2011-06-24)
+----------------
+
+- Removed force=yes option to prevent DoS attacks 
+- Output now to instance stderr
+
+
 0.1dev (unreleased)
 -------------------
 
-- Initial release
+- Plone instance discovery / ZODB traveersal
+- Resource sub-requesting
+- Page xml interigation and sub-requesting
+- CSS interigation and sub-requesting
+- Second level page sub-requesting
+- Added verbose=yes for better output control
+- Added force=yes to force a re-check
+- Added ignoreResourceServerError=yes option to ignore 5xx errors returned by
+  sub-resources
+
+
