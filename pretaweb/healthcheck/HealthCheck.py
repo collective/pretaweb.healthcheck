@@ -307,7 +307,7 @@ class HealthCheck (BrowserView):
 
         # Get status
 
-	self.output.write("pretaweb.healthcheck checking health:\n")
+        self.output.write("pretaweb.healthcheck checking health:\n")
         status = self.healthStatus ()
 
 
