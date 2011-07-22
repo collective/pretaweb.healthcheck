@@ -11,7 +11,7 @@ from plone.subrequest import subrequest
 
 
 healthCheckDone = False
-
+healthCheckResult = 503
 
 class RequestError (Exception): pass
 class ServerError (RequestError): pass
@@ -259,6 +259,7 @@ class HealthCheck (BrowserView):
 
     def healthStatus (self):
         global healthCheckDone
+        global healthCheckResult
         output = self.output
 
 
@@ -267,19 +268,20 @@ class HealthCheck (BrowserView):
         # on the first poll
         if healthCheckDone:
             output.write("Health check already done.\n")
-            status = 200
 
         else:
             output.write ("Good morning Plone world! Checking health...\n")
+            healthCheckDone = True
+            healthCheckResult = 503
 
             try:
-                # Do healthChecks
+                # Do healthChecks 
                 self.traverse()
 
             except:
                 # Instance not healthy
                 output.write ("Exception raised during health check.\n")
-                status = 503
+                healthCheckResult = 503
                 plonesWoke = False
 
                 sys.stderr.write("Exception raised during health check. (pretaweb.healthcheck)")
@@ -287,10 +289,9 @@ class HealthCheck (BrowserView):
 
             else:
                 output.write ("Finished health check.\n")
-                status = 200
-                healthCheckDone = True
+                healthCheckResult = 200
 
-        return status
+        return healthCheckResult
 
 
 
