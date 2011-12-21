@@ -37,8 +37,8 @@ class HealthCheck (BrowserView):
 
         newLinks = set()
         for l in links:
+            l = l.split("#")[0]
             if len(l) > 0:
-                l = l.split("#")[0]
                 l = urllib.unquote(l)
                 if l[0] == "/":
                     l = protocol + "://" + host + l
