@@ -1,13 +1,17 @@
 
+import logging
+import re
 import sys
 import traceback
 import urllib
-import re
-from StringIO import StringIO
 from lxml import etree
+from StringIO import StringIO
+
+from plone.subrequest import subrequest
 from Products.Five import BrowserView
 from zope.component import getMultiAdapter
-from plone.subrequest import subrequest
+
+logger = logging.getLogger("pretaweb.healthcheck")
 
 
 healthCheckDone = False
@@ -25,7 +29,6 @@ class HealthCheck (BrowserView):
     def parseLinks (self, workingPath, links):
         base = self.request.base
         workingURL = base + workingPath
-        output = self.output
         host = self.request.environ.get("HTTP_HOST")
         
 
@@ -66,7 +69,7 @@ class HealthCheck (BrowserView):
                 # Other URLs
                 else:
                     if self.verbose:
-                        output.write ("\tResource out of scope: %s\n" % l)
+                        logger.debug ("\tResource out of scope: %s" % l)
 
 
         return newLinks
@@ -75,7 +78,6 @@ class HealthCheck (BrowserView):
 
 
     def wakeResources (self, resources):
-        output = self.output
         byteCount = 0
         
         for url in resources:
@@ -86,15 +88,16 @@ class HealthCheck (BrowserView):
                 byteCount += len(body)
 
                 if self.verbose:
-                    output.write ("\tGot status %s for resource: %s\n" % (status, url))
+                    logger.debug("\tGot status %s for resource: %s" % (status, url))
 
             elif status >= 500:
-                output.write ("\tGot status %s for resource: %s\n" % (status, url))
                 if not self.ignoreResourceServerError:
+                    logger.info ("\tGot status %s for resource: %s" % (status, url))
                     raise ServerError ()
-
+                else:
+                    logger.debug ("\tGot status %s for resource: %s" % (status, url))
             else:
-                output.write ("\tGot status %s for resource: %s\n" % (status, url))
+                logger.debug ("\tGot status %s for resource: %s" % (status, url))
 
         return byteCount
 
@@ -102,7 +105,6 @@ class HealthCheck (BrowserView):
 
 
     def wakeCssResources (self, resources, alreadyDone):
-        output = self.output
         byteCount = 0
         urlResources = set()
         cssURLResourcePattern = re.compile (r"url\('?([^')]+)'?\)")
@@ -116,7 +118,7 @@ class HealthCheck (BrowserView):
             if status == 200:
 
                 if self.verbose:
-                    output.write ("\tGot status %s for resource: %s\n" % (status, url))
+                    logger.info ("\tGot status %s for resource: %s" % (status, url))
 
                 body = response.getBody()
                 byteCount += len(body)
@@ -140,23 +142,24 @@ class HealthCheck (BrowserView):
                     urlResources = urlResources.union ( self.parseLinks(workingPath, foundURLs) )
 
                 else:
-                    output.write ("\tNot a CSS document: %s\n" % url)
+                    logger.debug ("\tNot a CSS document: %s" % url)
 
 
             elif status >= 500:
-                output.write ("\tGot status %s for resource: %s\n" % (status, url))
                 if not self.ignoreResourceServerError:
+                    logger.info ("\tGot status %s for resource: %s" % (status, url))
                     raise ServerError ()
+                logger.debug ("\tGot status %s for resource: %s" % (status, url))
 
             else:
-                output.write ("\tGot status %s for resource: %s\n" % (status, url))
+                logger.debug ("\tGot status %s for resource: %s" % (status, url))
 
 
         # wake those extra resources
 
         alreadyDone = alreadyDone.union (resources)
         urlRresources = urlResources.difference (alreadyDone)
-        output.write ("\tFound %s resources referenced from CSS\n" % len(urlResources))
+        logger.debug ("\tFound %s resources referenced from CSS" % len(urlResources))
         byteCount += self.wakeResources (urlResources)
 
 
@@ -168,7 +171,6 @@ class HealthCheck (BrowserView):
         """Pre-caching mechenisim for plones sites. By making sub requests
         to bring objects into memory"""
         cssImportPattern = re.compile (r"@import\s+url\(([^)]+)\)\s*;")
-        output = self.output
 
 
         # Request the front page
@@ -177,8 +179,8 @@ class HealthCheck (BrowserView):
         response = subrequest(url_path)
         status = int(response.getStatus())
 
-        output.write("%s\n" % url_path)
-        output.write("\tHTTP status: %s\n" % status)
+        logger.info ("Plone Site: %s" % url_path)
+        logger.debug("\tHTTP status: %s" % status)
 
         if status >= 400 and status != 401:
             # Bad news - 4xx (client) and 5xx (server) errors.
@@ -196,7 +198,7 @@ class HealthCheck (BrowserView):
         try:
             doc = etree.parse (StringIO(body), etree.HTMLParser())
         except etree.XMLSyntaxError:
-            output.write ("\tWarning: XMLSyntaxError on front page\n")
+            logger.debug ("\tWarning: XMLSyntaxError on front page")
         else:
             links = doc.xpath("/html/body//a/@href")
             images = doc.xpath("/html/body//img/@src")
@@ -213,17 +215,18 @@ class HealthCheck (BrowserView):
             resources = resources.union( self.parseLinks (url_path, images) )
             resources = resources.union( self.parseLinks (url_path, scripts) )
 
-            output.write ("\tFound %s sub resources to load.\n" % len(resources))
+            logger.debug ("\tFound %s sub resources to load." % len(resources))
             byteCount += self.wakeResources (resources)   
 
             cssResources = self.parseLinks (url_path, headLink)
             cssResources = cssResources.union( self.parseLinks (url_path, cssImports) )
             cssResources = cssResources.difference (resources)
 
-            output.write ("\tFound %s css resources to load.\n" % len(cssResources) )
+            logger.debug ("\tFound %s css resources to load." % len(cssResources) )
             byteCount += self.wakeCssResources (cssResources, alreadyDone=resources)
 
-        output.write ("\tNumber of bytes retrieved: %s\n" % len(body))
+        logger.info ("Approximate of bytes retrieved for site resources: %s" % len(body))
+
 
 
 
@@ -233,7 +236,6 @@ class HealthCheck (BrowserView):
 
     def traverse (self):
         context = self.context
-        output = self.output
 
 
         # Discovery
@@ -246,7 +248,7 @@ class HealthCheck (BrowserView):
             return plones
 
         plones = findPlones(context)
-        output.write ("%s site(s) found.\n" % len(plones))
+        logger.info ("%s site(s) found.\n" % len(plones))
 
 
         # Wake-up time
@@ -260,17 +262,16 @@ class HealthCheck (BrowserView):
     def healthStatus (self):
         global healthCheckDone
         global healthCheckResult
-        output = self.output
 
 
         # healthCheckDone doesn't persist application restarts, 
         # so this ensures that the health check is only done
         # on the first poll
         if healthCheckDone:
-            output.write("Health check already done.\n")
+            logger.debug ("Health check already done.")
 
         else:
-            output.write ("Good morning Plone world! Checking health...\n")
+            logger.info ("Good morning Plone world! Checking health...")
             healthCheckDone = True
             healthCheckResult = 503
 
@@ -280,15 +281,14 @@ class HealthCheck (BrowserView):
 
             except:
                 # Instance not healthy
-                output.write ("Exception raised during health check.\n")
+                logger.info ("Exception raised during health check.")
                 healthCheckResult = 503
                 plonesWoke = False
 
-                sys.stderr.write("Exception raised during health check. (pretaweb.healthcheck)")
-                traceback.print_exc(file=sys.stderr)
+                logger.info (traceback.format_exc())
 
             else:
-                output.write ("Finished health check.\n")
+                logger.info ("Finished health check. Pass.")
                 healthCheckResult = 200
 
         return healthCheckResult
@@ -301,14 +301,12 @@ class HealthCheck (BrowserView):
 
         # Contextual Setup
 
-        self.output = sys.stderr
         self.verbose = self.request.get("verbose", False) == "yes"
         self.ignoreResourceServerError = self.request.get("ignoreResourceServerError") == "yes"
 
 
         # Get status
 
-        self.output.write("pretaweb.healthcheck checking health:\n")
         status = self.healthStatus ()
 
 
@@ -321,7 +319,7 @@ class HealthCheck (BrowserView):
                 status,
                 { 200:"OK", 503:"Service Unavailable" }.get(status, "") )
 
-        self.output.write ("pretaweb.healthcheck result: " + responseLine)
+        logger.debug ("helthcheck result: " + responseLine)
 
         return responseLine
         
