@@ -40,6 +40,13 @@ class HealthCheck (BrowserView):
 
         newLinks = set()
         for l in links:
+        
+            # Unfortuantly there are ^still^ GET requests in plone
+            # which have side affects. Most notably: xxx/content_status_modify?workflow_action=retract
+            # which has a habbit of bringing down the front page if the healthchecker somehow gets admin access.
+            if "?" in l:
+                pass
+        
             l = l.split("#")[0]
             if len(l) > 0:
                 l = urllib.unquote(l)
