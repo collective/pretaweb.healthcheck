@@ -24,6 +24,9 @@ class ServerError (RequestError): pass
 class HealthCheck (BrowserView):
 
 
+    _lastRequestedURL = None
+
+
 
 
     def parseLinks (self, workingPath, links):
@@ -88,6 +91,7 @@ class HealthCheck (BrowserView):
         byteCount = 0
         
         for url in resources:
+            self._lastRequestedURL = url
             response = subrequest(url)
             status = response.getStatus()
             if status == 200:
@@ -119,6 +123,7 @@ class HealthCheck (BrowserView):
         # Get css resources and parse for url(...) directives
 
         for url in resources:
+            self._lastRequestedURL = url
             response = subrequest(url)
             status = response.getStatus()
 
@@ -183,6 +188,7 @@ class HealthCheck (BrowserView):
         # Request the front page
 
         url_path = "/".join (plone.getPhysicalPath())
+        self._lastRequestedURL = url_path
         response = subrequest(url_path)
         status = int(response.getStatus())
 
@@ -292,6 +298,7 @@ class HealthCheck (BrowserView):
                 healthCheckResult = 503
                 plonesWoke = False
 
+                logger.info ("Last requested URL: %s", self._lastRequestedURL)
                 logger.info (traceback.format_exc())
 
             else:
