@@ -1,4 +1,4 @@
-
+from datetime import datetime, timedelta
 import logging
 import re
 import sys
@@ -11,11 +11,21 @@ from plone.subrequest import subrequest
 from Products.Five import BrowserView
 from zope.component import getMultiAdapter
 
+from Products.CMFPlone.interfaces.siteroot import IPloneSiteRoot
+
+from random import random
+
 logger = logging.getLogger("pretaweb.healthcheck")
 
+STATUS_ERROR = 500
+STATUS_HEALTHY = 200
 
-healthCheckDone = False
-healthCheckResult = 503
+healthCheckResult = None
+healthCheckExpire = None
+
+healthCheckIntervalMin = timedelta(minutes=5)
+healthCheckIntervalMax = timedelta(minutes=10)
+
 
 class RequestError (Exception): pass
 class ServerError (RequestError): pass
@@ -247,82 +257,128 @@ class HealthCheck (BrowserView):
 
 
 
-    def traverse (self):
+    def wakeVHPlones (self, recheck=False):
         context = self.context
 
+        # use the virtual hosting definitions for plone discovery. sort randomly since
+        # on subsiqutent calls to healthcheck healthcheck is only looking for one live site.
+        vh = context.virtual_hosting
+        plone_paths = set( [tuple(line.split("/")[1:]) for line in vh.lines if '/' in line])
+        plone_paths = list(plone_paths)
+        plone_paths.sort(key=lambda x: random())
 
-        # Discovery
+        logger.info ("%s entrie(s) found in virtual host monster." % len(plone_paths))
 
-        def findPlones (context):
-            plones = context.objectValues("Plone Site")
-            folders = context.objectValues("Folder")
-            for folder in folders:
-                plones += findPlones(folder)
-            return plones
+        plones_discovered = 0
 
-        plones = findPlones(context)
-        logger.info ("%s site(s) found.\n" % len(plones))
+        for path in plone_paths:
+            obj = context.restrictedTraverse(path)
+            if IPloneSiteRoot.providedBy(obj):
+                plones_discovered += 1
+                
+                if recheck:
+                    # absorbe exceptions on a recheck, we are only trying to finde a single healthy site
+                    try:
+                        self.wakePlone(obj)
+                    except:
+                        logger.info ("Exception raised during recheck (non fatle)")
+                        logger.info ("Last requested URL: %s", self._lastRequestedURL)
+                        logger.info (traceback.format_exc())
+                    else:
+                        return
+                else:
+                    # exceptions... let it be.
+                    self.wakePlone (obj)
+
+        if plones_discovered > 0 and recheck:
+            raise Exception("No healthy Plones found on recheck")
+
+        return
 
 
-        # Wake-up time
 
-        for p in plones:
-            self.wakePlone (p)
 
+
+    def recheck (self):
+        logger.info ("Recheck - finding single healthy site in virtual_hosting maps...")
+        try:
+            self.wakeVHPlones(recheck=True)
+
+        except:
+            # Instance no longer healthy
+            logger.info ("Exception raised during health recheck.")
+            status = STATUS_ERROR
+            logger.info (traceback.format_exc())
+
+        else:
+            logger.info ("Finished health recheck. Pass.")
+            status = STATUS_HEALTHY
+
+        return status
+
+
+
+    def comprehensiveCheck (self):
+       
+        logger.info ("Comprehensive check - testing all sites in virtual_hosting maps...")
+        try:
+            self.wakeVHPlones()
+        except:
+            # Instance not healthy
+            logger.info ("Exception raised during health check.")
+            status = STATUS_ERROR
+
+            logger.info ("Last requested URL: %s", self._lastRequestedURL)
+            logger.info (traceback.format_exc())
+
+        else:
+            logger.info ("Finished health check. Pass.")
+            status = STATUS_HEALTHY
+
+        return status
 
 
 
     def healthStatus (self):
-        global healthCheckDone
+
         global healthCheckResult
+        global healthCheckExpire
 
-
-        # healthCheckDone doesn't persist application restarts, 
-        # so this ensures that the health check is only done
-        # on the first poll
-        if healthCheckDone:
+        now = datetime.now()
+        if healthCheckExpire is not None and now < healthCheckExpire:
             logger.debug ("Health check already done.")
-
+            
         else:
-            logger.info ("Good morning Plone world! Checking health...")
-            healthCheckDone = True
-            healthCheckResult = 503
 
-            try:
-                # Do healthChecks 
-                self.traverse()
-
-            except:
-                # Instance not healthy
-                logger.info ("Exception raised during health check.")
-                healthCheckResult = 503
-                plonesWoke = False
-
-                logger.info ("Last requested URL: %s", self._lastRequestedURL)
-                logger.info (traceback.format_exc())
-
+            # Do check
+            if healthCheckResult != STATUS_HEALTHY:
+                healthCheckResult = self.comprehensiveCheck()
             else:
-                logger.info ("Finished health check. Pass.")
-                healthCheckResult = 200
+                healthCheckResult = self.recheck()
+
+            # Find interval to next check
+            extra = float((healthCheckIntervalMax - healthCheckIntervalMin).seconds) * random()
+            extra = round(extra)
+            interval = healthCheckIntervalMin + timedelta(seconds=extra)
+
+            # Set next check time
+            healthCheckExpire = datetime.now() + interval
+
+            logger.info ("Next health check after %s" % healthCheckExpire)
 
         return healthCheckResult
 
 
 
-
     def __call__ (self):
 
-
         # Contextual Setup
-
         self.verbose = self.request.get("verbose", False) == "yes"
-        self.ignoreResourceServerError = self.request.get("ignoreResourceServerError") == "yes"
+        self.ignoreResourceServerError = True # this is a bit of a security issue -  self.request.get("ignoreResourceServerError") == "yes"
 
 
         # Get status
-
         status = self.healthStatus ()
-
 
         # Construst Response
 
