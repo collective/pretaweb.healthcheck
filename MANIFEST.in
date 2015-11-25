@@ -1,5 +1,0 @@
-include *.txt
-
-recursive-include docs pretaweb *
-
-global-exclude *pyc
