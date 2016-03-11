@@ -59,32 +59,32 @@ class HealthCheck (BrowserView):
                 pass
 
             l = l.split('#')[0]
-            if len(l) > 0:
-                l = urllib.unquote(l)
-                if l[0] == '/':
-                    l = protocol + '://' + host + l
-                if l.endswith('/'):
-                    l = l[:-1]
+            if not len(l):
+                continue
+            l = urllib.unquote(l)
+            if l[0] == '/':
+                l = protocol + '://' + host + l
+            l = l.rstrip('/')
 
-                # Link same as base - ignore
-                if workingURL == l:
-                    pass
+            # Link same as base - ignore
+            if workingURL == l:
+                continue
 
-                # Absolute URL - add without base
-                elif l.startswith(base):
-                    p = l[len(base):]
-                    newLinks.add(p)
+            # Absolute URL - add without base
+            if l.startswith(base):
+                p = l[len(base):]
+                newLinks.add(p)
 
-                # Relative URL - add with workingURL
-                elif not (l.startswith('http://') or l.startswith('https://')):
-                    ll = workingURL + '/' + l
-                    p = ll[len(base):]
-                    newLinks.add(p)
+            # Relative URL - add with workingURL
+            elif not (l.startswith('http://') or l.startswith('https://')):
+                ll = workingURL + '/' + l
+                p = ll[len(base):]
+                newLinks.add(p)
 
-                # Other URLs
-                else:
-                    if self.verbose:
-                        logger.debug('\tResource out of scope: %s', l)
+            # Other URLs
+            else:
+                if self.verbose:
+                    logger.debug('\tResource out of scope: %s', l)
 
         return newLinks
 
