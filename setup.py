@@ -1,13 +1,13 @@
 from setuptools import setup, find_packages
 import os
 
-version = '1.0'
+version = '2.0.0.dev0'
 
 setup(name='pretaweb.healthcheck',
       version=version,
       description="Load balancer health checker for a Plone/Zope Instance",
-      long_description=open("README.txt").read() + "\n" +
-                       open(os.path.join("docs", "HISTORY.txt")).read(),
+      long_description=open("README.rst").read() + "\n" +
+                       open(os.path.join("docs", "HISTORY.rst")).read(),
       # Get more strings from
       # http://pypi.python.org/pypi?:action=list_classifiers
       classifiers=[
@@ -23,10 +23,11 @@ setup(name='pretaweb.healthcheck',
       include_package_data=True,
       zip_safe=False,
       install_requires=[
+          'Products.CMFPlone',
+          'lxml',
+          'plone.protect',  # GET is safe.
+          'plone.subrequest',
           'setuptools',
-          # -*- Extra requirements: -*-
-	  'plone.subrequest',
-	  'lxml',
       ],
       entry_points="""
       # -*- Entry points: -*-
