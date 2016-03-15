@@ -214,31 +214,6 @@ def test_get_plone_navroots_multilingual(monkeypatch):
     assert [{'de': 'de_folder'}, 'de_folder'] == plones
 
 
-def xxtest_wake_vh_plone(monkeypatch):
-    monkeypatch.setattr('pretaweb.healthcheck.check.IPloneSiteRoot',
-                        FakeSiteRoot([True, False]))
-    checker = HealthCheck(last_result=STATUS_ERROR,
-                          expire_time=quite_old,
-                          traverser=lambda x: x,
-                          context=None,
-                          base=None,
-                          host=None,
-                          use_https=False,
-                          )
-
-    remember_them = []
-
-    def _wake_plone(a_plone):
-        remember_them.append(a_plone)
-
-    checker._wake_plone = _wake_plone
-
-    checker._wake_vh_plone('a')
-    checker._wake_vh_plone('b')
-
-    assert ['b'] == remember_them
-
-
 class FakePloneObj(object):
     def getPhysicalPath(self):
         return ('a', 'b', 'c')
