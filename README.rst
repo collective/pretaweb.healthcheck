@@ -64,4 +64,11 @@ Todo
 - [ ] Allow some form of configuration to filter out specific navroots. Useful if one has many languages an not each backend zeoclient handles each language
 - [ ] Caching under Plone 5 is currently not working very well: `subrequest bug`_ 
 
+Testing
+-------
+The code has full test coverage for everything except the views.
+To exercise the tests in a development checkout, run buildout, then run::
+
+    $ ./bin/py.test --cov=pretaweb --cov-report=term-missing
+
 .. _`subrequest bug`: https://github.com/plone/plone.subrequest/issues/6
