@@ -43,6 +43,14 @@ Advantages of pretaweb.healthcheck:
 
 If you use haproxy, you want to use pretaweb.healthcheck.
 
+Installation
+------------
+
+Add the egg as a dependency to your policy egg.
+This package does not store persistent configuration. There is no configuration option within the plone site.
+
+No installation or uninstallation profile needs to be executed.
+
 Configuration
 -------------
 
