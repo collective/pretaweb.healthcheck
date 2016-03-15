@@ -6,12 +6,10 @@
 
 
     <browser:page
-        for="*"
-	name="healthcheck"
-	class=".HealthCheck.HealthCheckView"
-	permission="zope2.View"
-        />
-
-    
+        for="OFS.interfaces.IApplication"
+        name="healthcheck"
+        class=".views.HealthCheckView"
+        permission="zope2.View"
+      />
 
 </configure>

@@ -12,6 +12,7 @@ logger = logging.getLogger(__name__)
 CACHED_HEALTH_CHECK_RESULT = STATUS_ERROR
 HEALTH_CHECK_NEXT_EXPIRE = datetime.utcnow() - timedelta(seconds=1)
 
+
 class HealthCheckView(BrowserView):
 
     def __call__(self):
