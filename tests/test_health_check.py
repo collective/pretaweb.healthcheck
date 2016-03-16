@@ -26,6 +26,7 @@ def test_first_run():
                           base=None,
                           host=None,
                           use_https=False,
+                          paths=None,
                           )
     new_expire, result = checker()
     assert is_between_20_to_100_minutes_from_now(new_expire)
@@ -40,6 +41,7 @@ def test_cached_run():
                           base=None,
                           host=None,
                           use_https=False,
+                          paths=None,
                           )
     new_expire, new_result = checker()
     assert new_expire == ten_minutes_from_now
@@ -54,9 +56,10 @@ def test_recheck_checks_one():
                           base=None,
                           host=None,
                           use_https=False,
+                          paths=None,
                           )
 
-    def _get_plones():
+    def _get_pages():
         return (1, 2)
 
     remember_them = []
@@ -64,7 +67,7 @@ def test_recheck_checks_one():
     def _wake_plone(a_plone):
         remember_them.append(a_plone)
 
-    checker._get_plones = _get_plones
+    checker._get_pages = _get_pages
     checker._wake_plone = _wake_plone
 
     new_expire, result = checker()
@@ -83,9 +86,10 @@ def test_full_check_after_unhealthy_check():
                           base=None,
                           host=None,
                           use_https=False,
+                          paths=None,
                           )
 
-    def _get_plones():
+    def _get_pages():
         return (1, 2)
 
     remember_them = []
@@ -93,7 +97,7 @@ def test_full_check_after_unhealthy_check():
     def _wake_plone(a_plone):
         remember_them.append(a_plone)
 
-    checker._get_plones = _get_plones
+    checker._get_pages = _get_pages
     checker._wake_plone = _wake_plone
 
     new_expire, result = checker()
@@ -111,12 +115,13 @@ def test_check_does_not_handle_conflict_error():
                           base=None,
                           host=None,
                           use_https=False,
+                          paths=None,
                           )
 
-    def _get_plones():
+    def _get_pages():
         raise ConflictError()
 
-    checker._get_plones = _get_plones
+    checker._get_pages = _get_pages
 
     pytest.raises(ConflictError, checker)
 
@@ -129,19 +134,20 @@ def test_check_does_handle_other_exceptions():
                           base=None,
                           host=None,
                           use_https=False,
+                          paths=None,
                           )
 
-    def _get_plones():
+    def _get_pages():
         raise KeyError()
 
-    checker._get_plones = _get_plones
+    checker._get_pages = _get_pages
 
     new_expire, result = checker()
     assert is_between_20_to_100_minutes_from_now(new_expire)
     assert result == STATUS_ERROR
 
 
-def test_get_plones_handles_empty():
+def test_get_pages_handles_empty():
     checker = HealthCheck(last_result=STATUS_ERROR,
                           expire_time=quite_old,
                           traverser=None,
@@ -149,9 +155,10 @@ def test_get_plones_handles_empty():
                           base=None,
                           host=None,
                           use_https=False,
+                          paths=None,
                           )
 
-    assert [] == list(checker._get_plones())
+    assert [] == list(checker._get_pages())
 
 
 class FakeSiteRoot(object):
@@ -172,9 +179,10 @@ def test_get_plone_navroots(monkeypatch):
                           base=None,
                           host=None,
                           use_https=False,
+                          paths=None,
                           )
 
-    plones = list(checker._get_plones())
+    plones = list(checker._get_pages())
     assert ['a', 'b'] == plones
 
 
@@ -190,9 +198,10 @@ def test_get_plone_site_root_and_nav_root(monkeypatch):
                           base=None,
                           host=None,
                           use_https=False,
+                          paths=None,
                           )
 
-    plones = list(checker._get_plones())
+    plones = list(checker._get_pages())
     assert [{'myplone': True}] == plones
 
 
@@ -208,10 +217,33 @@ def test_get_plone_navroots_multilingual(monkeypatch):
                           base=None,
                           host=None,
                           use_https=False,
+                          paths=None,
                           )
 
-    plones = list(checker._get_plones())
+    plones = list(checker._get_pages())
     assert [{'de': 'de_folder'}, 'de_folder'] == plones
+
+
+class FakeContext(object):
+    def unrestrictedTraverse(self, path):
+        if 'missing' in path:
+            raise KeyError
+        return path
+
+
+def test_get_plone_from_paths():
+    checker = HealthCheck(last_result=STATUS_ERROR,
+                          expire_time=quite_old,
+                          traverser=None,
+                          context=FakeContext(),
+                          base=None,
+                          host=None,
+                          use_https=False,
+                          paths=['/a', '/missing'],
+                          )
+
+    plones = list(checker._get_pages())
+    assert ['/a'] == plones
 
 
 class FakePloneObj(object):
@@ -239,6 +271,7 @@ def test_wake_plone(monkeypatch):
                           base=None,
                           host=None,
                           use_https=False,
+                          paths=None,
                           )
     checker._wake_plone(FakePloneObj())
 

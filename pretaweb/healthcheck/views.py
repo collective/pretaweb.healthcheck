@@ -15,7 +15,7 @@ HEALTH_CHECK_NEXT_EXPIRE = datetime.utcnow() - timedelta(seconds=1)
 
 class HealthCheckView(BrowserView):
 
-    def __call__(self):
+    def __call__(self, paths=None):
         environ = self.request.environ
         context = self.context
 
@@ -36,6 +36,7 @@ class HealthCheckView(BrowserView):
                                    base=self.request.base,
                                    host=environ.get('HTTP_HOST'),
                                    use_https=use_https,
+                                   paths=paths,
                                    )
 
         HEALTH_CHECK_NEXT_EXPIRE, CACHED_HEALTH_CHECK_RESULT = health_check()

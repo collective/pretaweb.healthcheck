@@ -208,6 +208,7 @@ class HealthCheck(object):
                  base,
                  host,
                  use_https,
+                 paths=None,
                  ):
         self.last_result = last_result
         self.expire_time = expire_time
@@ -216,6 +217,7 @@ class HealthCheck(object):
         self.base = base
         self.host = host
         self.use_https = use_https
+        self.paths = paths
 
     def __call__(self):
         if datetime.utcnow() < self.expire_time:
@@ -224,10 +226,10 @@ class HealthCheck(object):
         try:
             if self.last_result == STATUS_HEALTHY:
                 logger.info('Doing limited recheck')
-                self._wake_plone(choice(list(self._get_plones())))
+                self._wake_plone(choice(list(self._get_pages())))
             else:
                 logger.info('Doing full check')
-                for plone in self._get_plones():
+                for plone in self._get_pages():
                     self._wake_plone(plone)
         except Exception, e:
             if isinstance(e, ConflictError):
@@ -246,7 +248,23 @@ class HealthCheck(object):
 
         return new_expire, result
 
-    def _get_plones(self):
+    def _get_pages(self):
+        if self.paths:
+            return self._get_path_filtered_pages()
+        else:
+            return self._get_all_plone_and_navroots()
+
+    def _get_path_filtered_pages(self):
+        for path in self.paths:
+            try:
+                yield self.context.unrestrictedTraverse(path)
+            except KeyError:
+                logger.warning(('I was asked to to a halth check for %r '
+                                'but I cannot find an object on this '
+                                'path. I ignore this'), path)
+                continue
+
+    def _get_all_plone_and_navroots(self):
         for item in self.context.values():
             if IPloneSiteRoot.providedBy(item):
                 if INavigationRoot.providedBy(item):

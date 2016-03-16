@@ -12,6 +12,9 @@ It will also check the Plone site for direct descendent Navigation Roots.
 If you have a multilingual site, you usually have a root folder for each language and this folder is a navigation root.
 So this means, every language gets warmed up.
 
+There is an alternative mode. If you call the view paths:list get parameters, healthcheck will check these pages, together with the resources this page references. There is no check if the path is INavigationRoot or an IPloneSite.
+So this allows you to add any page to the check and the cache.
+
 HAProxy calls the URL quite often. A cache mechanism ensures that by default:
 
   1. The check happens only between every 30-90 minutes. Inbetween you get a cached result
@@ -28,14 +31,13 @@ Comparison with collective.warmup
 This package was here first.
 
 collective.warmup is a standalone script, existing outsite of zope/Plone.
-You can configure it to call anything in your page, like the search page.
 
-Advantages of collective.warmup:
+Advantages of collective.warmup over pretaweb.healthcheck:
 
     - can be executed once during a deployment
-    - can warm up any resource, also a search
+    - Does (maybe?) not have the failure modes explained below
 
-Advantages of pretaweb.healthcheck:
+Advantages of pretaweb.healthcheck over collective.warmup:
 
     - Can be integrated in HAProxy
     - Caching included in pretaweb.healthcheck
@@ -67,6 +69,12 @@ You can control cache times with environment variables:
 To calculate the next expire time, the cache_interval is taken, and a random number between 0 and the cache_variance is added.
 This time is calculated after every expiration.
 
+If you do not want to warm up every single Plone site / navigation root, you can give paths to check for. These paths are checked **together** with the resources the page references::
+
+    http://yourserver:port/@@healthcheck?paths:list=/Plone/en&paths:list=/Plone/en/a/b/c/d/expensive_page
+
+Would load all resources of the english front page and the one expensive page deep down your site.
+
 Failure modes
 -------------
 
@@ -85,14 +93,13 @@ If you are in such a situation, you have a few possibilities:
 
   - Move your unused Plone pages into a subfolder. They won't be found any more. Earlier versions used the virtual_hosting mapping to find Plone sites. This version doesn't
   - Have proper monitoring in Place. `Sentry`_ has proper `Plone integration`_ and in its default configuration will send you mails for errors only and only once. So after cutting the noise by fixing a bunch of invisible bugs, every mail is usually an actionable item.
-  - Implement the first todo from the todo list below, then configure this package and HAProxy properly, so that you can use different backend for different Plone sites or language folders. Then the breakage is more local.
+  - Configure this package and HAProxy so that you can use different backend for different Plone sites or language folders. Then the breakage is more local.
 
 If you have a dedicated Zope Instance for a single Plone site, and your users can't break the Plone page easily, this is much less an issue.
 
 
 Todo
 ----
-- [ ] Allow some form of configuration to filter out specific navroots. Useful if one has many languages an not each backend zeoclient handles each language
 - [ ] Caching under Plone 5 is currently not working very well: `subrequest bug`_ 
 
 Testing
