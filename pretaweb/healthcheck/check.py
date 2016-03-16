@@ -254,13 +254,13 @@ class HealthCheck(object):
                 # Instance no longer healthy
                 result = STATUS_ERROR
             else:
-                logger.info('Finished health check in %i. Passed.',
+                logger.info('Finished health check in %i seconds. Passed.',
                             time() - start)
                 result = STATUS_HEALTHY
 
             new_expire = self._next_expire()
 
-            logger.info('Next health check in %s seconds',
+            logger.info('Next health check in %s',
                         new_expire.isoformat())
 
             return new_expire, result

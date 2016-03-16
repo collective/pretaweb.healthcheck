@@ -44,7 +44,7 @@ class HealthCheckView(BrowserView):
                                    traverser=context.restrictedTraverse,
                                    context=self.context,
                                    base=self.request.base,
-                                   host=environ.get('HTTP_HOST'),
+                                   host=environ.get('HTTP_HOST', ''),
                                    use_https=use_https,
                                    paths=paths,
                                    )
