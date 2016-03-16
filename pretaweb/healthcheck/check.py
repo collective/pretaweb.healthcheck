@@ -247,7 +247,7 @@ class HealthCheck(object):
         new_expire_in = INTERVAL + randint(0, INTERVAL_VARIANCE)
         new_expire = datetime.utcnow() + timedelta(seconds=new_expire_in)
 
-        logger.info('Next health check in %s', new_expire.isoformat())
+        logger.info('Next health check in %s seconds', new_expire.isoformat())
 
         return new_expire, result
 
