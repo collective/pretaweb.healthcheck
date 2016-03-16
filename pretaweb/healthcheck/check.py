@@ -8,6 +8,7 @@ from Products.CMFPlone.interfaces.siteroot import IPloneSiteRoot
 from random import choice
 from random import randint
 from StringIO import StringIO
+from time import time
 from ZODB.POSException import ConflictError
 
 import logging
@@ -222,6 +223,7 @@ class HealthCheck(object):
     def __call__(self):
         if datetime.utcnow() < self.expire_time:
             return self.expire_time, self.last_result
+        start = time()
 
         try:
             if self.last_result == STATUS_HEALTHY:
@@ -238,7 +240,8 @@ class HealthCheck(object):
             # Instance no longer healthy
             result = STATUS_ERROR
         else:
-            logger.info('Finished health check. Pass.')
+            logger.info('Finished health check in %i. Passed.',
+                        time() - start)
             result = STATUS_HEALTHY
 
         new_expire_in = INTERVAL + randint(0, INTERVAL_VARIANCE)
