@@ -2,6 +2,7 @@ from datetime import datetime
 from datetime import timedelta
 from pretaweb.healthcheck.check import HealthCheck
 from pretaweb.healthcheck.check import STATUS_ERROR
+from pretaweb.healthcheck.check import NotExpired
 from Products.Five import BrowserView
 
 import logging
@@ -27,7 +28,7 @@ class HealthCheckView(BrowserView):
 
         if CHECK_IN_PROGRESS and datetime.utcnow() < HEALTH_CHECK_NEXT_EXPIRE:
             logger.info('Check in progress, ignoring returning old result')
-            return self.build_response(CACHED_HEALTH_CHECK_RESULT)
+            return self._build_response(CACHED_HEALTH_CHECK_RESULT)
         else:
             CHECK_IN_PROGRESS = True
 
@@ -48,7 +49,11 @@ class HealthCheckView(BrowserView):
                                    paths=paths,
                                    )
 
-        HEALTH_CHECK_NEXT_EXPIRE, CACHED_HEALTH_CHECK_RESULT = health_check()
+        try:
+            HEALTH_CHECK_NEXT_EXPIRE, CACHED_HEALTH_CHECK_RESULT = \
+                health_check()
+        except NotExpired:
+            return self._build_response(CACHED_HEALTH_CHECK_RESULT)
 
         cache_utiliziation_after = db.cacheSize() / cache_percent_mod
 
@@ -60,9 +65,9 @@ class HealthCheckView(BrowserView):
         logger.info('Cache fill level before: %.2f %%. After: %.2f %%.',
                     cache_utiliziation_before, cache_utiliziation_after)
 
-        return self.build_response(status)
+        return self._build_response(status)
 
-    def build_response(self, status):
+    def _build_response(self, status):
         # Construst Response
         response = self.request.response
         response.setStatus(status)

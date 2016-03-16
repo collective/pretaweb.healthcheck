@@ -1,10 +1,12 @@
 from datetime import datetime
-import pytest
-from pretaweb.healthcheck.check import HealthCheck
-from pretaweb.healthcheck.check import STATUS_HEALTHY
-from pretaweb.healthcheck.check import STATUS_ERROR
 from datetime import timedelta as td
+from pretaweb.healthcheck.check import HealthCheck
+from pretaweb.healthcheck.check import NotExpired
+from pretaweb.healthcheck.check import STATUS_ERROR
+from pretaweb.healthcheck.check import STATUS_HEALTHY
 from ZODB.POSException import ConflictError
+
+import pytest
 
 
 now = datetime.utcnow()
@@ -43,9 +45,7 @@ def test_cached_run():
                           use_https=False,
                           paths=None,
                           )
-    new_expire, new_result = checker()
-    assert new_expire == ten_minutes_from_now
-    assert new_result == last_result
+    pytest.raises(NotExpired, checker)
 
 
 def test_avoid_parallel_runs(monkeypatch):
@@ -60,9 +60,7 @@ def test_avoid_parallel_runs(monkeypatch):
                           use_https=False,
                           paths=None,
                           )
-    new_expire, new_result = checker()
-    assert new_expire == ten_minutes_from_now
-    assert new_result == last_result
+    pytest.raises(NotExpired, checker)
 
 
 def test_recheck_checks_one():

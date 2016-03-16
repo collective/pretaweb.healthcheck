@@ -40,6 +40,10 @@ class ServerError(RequestError):
     pass
 
 
+class NotExpired(Exception):
+    pass
+
+
 class PloneLoader(object):
     def __init__(self, base, host, uses_https, url):
         self.start_url = url
@@ -229,10 +233,10 @@ class HealthCheck(object):
             if AM_I_RUNNING and datetime.utcnow() < self._next_expire():
                 logger.info('I am still doing the health check, but just '
                             'got asked again. I will return the last state.')
-                return self.expire_time, self.last_result
+                raise NotExpired()
             AM_I_RUNNING = True
             if datetime.utcnow() < self.expire_time:
-                return self.expire_time, self.last_result
+                raise NotExpired()
             start = time()
 
             try:
