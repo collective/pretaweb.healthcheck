@@ -252,12 +252,15 @@ class HealthCheck(object):
         return new_expire, result
 
     def _get_pages(self):
+        logger.debug('Checking a list of given paths')
         if self.paths:
             return self._get_path_filtered_pages()
         else:
             return self._get_all_plone_and_navroots()
 
     def _get_path_filtered_pages(self):
+        logger.debug('Checking all toplevel plone pages and their '
+                     'direct nav root pages')
         for path in self.paths:
             try:
                 yield self.context.unrestrictedTraverse(path)

@@ -12,6 +12,8 @@ logger = logging.getLogger(__name__)
 CACHED_HEALTH_CHECK_RESULT = STATUS_ERROR
 HEALTH_CHECK_NEXT_EXPIRE = datetime.utcnow() - timedelta(seconds=1)
 
+CHECK_IN_PROGRESS = False
+
 
 class HealthCheckView(BrowserView):
 
@@ -21,6 +23,13 @@ class HealthCheckView(BrowserView):
 
         global CACHED_HEALTH_CHECK_RESULT
         global HEALTH_CHECK_NEXT_EXPIRE
+        global CHECK_IN_PROGRESS
+
+        if CHECK_IN_PROGRESS and datetime.utcnow() < HEALTH_CHECK_NEXT_EXPIRE:
+            logger.info('Check in progress, ignoring returning old result')
+            return self.build_response(CACHED_HEALTH_CHECK_RESULT)
+        else:
+            CHECK_IN_PROGRESS = True
 
         use_https = environ.get('HTTPS', False)
 
@@ -45,7 +54,15 @@ class HealthCheckView(BrowserView):
 
         # Get status
         status = CACHED_HEALTH_CHECK_RESULT
+        CHECK_IN_PROGRESS = False
 
+        logger.info('healthcheck result: %r', status)
+        logger.info('Cache fill level before: %.2f %%. After: %.2f %%.',
+                    cache_utiliziation_before, cache_utiliziation_after)
+
+        return self.build_response(status)
+
+    def build_response(self, status):
         # Construst Response
         response = self.request.response
         response.setStatus(status)
@@ -53,9 +70,5 @@ class HealthCheckView(BrowserView):
         responseLine = '%s %s\n' % (
             status,
             {200: 'OK', 503: 'Service Unavailable'}.get(status, ''))
-
-        logger.info('healthcheck result: %s', responseLine)
-        logger.info('Cache fill level before: %.2f %%. After: %.2f %%.',
-                    cache_utiliziation_before, cache_utiliziation_after)
 
         return responseLine
