@@ -48,6 +48,23 @@ def test_cached_run():
     assert new_result == last_result
 
 
+def test_avoid_parallel_runs(monkeypatch):
+    monkeypatch.setattr('pretaweb.healthcheck.check.AM_I_RUNNING', True)
+    last_result = 'same'
+    checker = HealthCheck(last_result=last_result,
+                          expire_time=ten_minutes_from_now,
+                          traverser=None,
+                          context=None,
+                          base=None,
+                          host=None,
+                          use_https=False,
+                          paths=None,
+                          )
+    new_expire, new_result = checker()
+    assert new_expire == ten_minutes_from_now
+    assert new_result == last_result
+
+
 def test_recheck_checks_one():
     checker = HealthCheck(last_result=STATUS_HEALTHY,
                           expire_time=quite_old,

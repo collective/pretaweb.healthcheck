@@ -27,6 +27,9 @@ INTERVAL = int(getenv('healthcheck_cache_interval', 3600))
 INTERVAL_VARIANCE = int(getenv('healthcheck_cache_variance',  1800))
 
 
+AM_I_RUNNING = False
+
+
 class RequestError(Exception):
     def __init__(self, url, status):
         self.url = url
@@ -221,35 +224,48 @@ class HealthCheck(object):
         self.paths = paths
 
     def __call__(self):
-        if datetime.utcnow() < self.expire_time:
-            return self.expire_time, self.last_result
-        start = time()
-
+        global AM_I_RUNNING
         try:
-            if self.last_result == STATUS_HEALTHY:
-                logger.info('Doing limited recheck')
-                self._wake_plone(choice(list(self._get_pages())))
+            if AM_I_RUNNING and datetime.utcnow() < self._next_expire():
+                logger.info('I am still doing the health check, but just '
+                            'got asked again. I will return the last state.')
+                return self.expire_time, self.last_result
+            AM_I_RUNNING = True
+            if datetime.utcnow() < self.expire_time:
+                return self.expire_time, self.last_result
+            start = time()
+
+            try:
+                if self.last_result == STATUS_HEALTHY:
+                    logger.info('Doing limited recheck')
+                    self._wake_plone(choice(list(self._get_pages())))
+                else:
+                    logger.info('Doing full check')
+                    for plone in self._get_pages():
+                        self._wake_plone(plone)
+            except Exception, e:
+                if isinstance(e, ConflictError):
+                    raise
+                logger.exception('Healthcheck found a problem')
+                # Instance no longer healthy
+                result = STATUS_ERROR
             else:
-                logger.info('Doing full check')
-                for plone in self._get_pages():
-                    self._wake_plone(plone)
-        except Exception, e:
-            if isinstance(e, ConflictError):
-                raise
-            logger.exception('Healthcheck found a problem')
-            # Instance no longer healthy
-            result = STATUS_ERROR
-        else:
-            logger.info('Finished health check in %i. Passed.',
-                        time() - start)
-            result = STATUS_HEALTHY
+                logger.info('Finished health check in %i. Passed.',
+                            time() - start)
+                result = STATUS_HEALTHY
 
+            new_expire = self._next_expire()
+
+            logger.info('Next health check in %s seconds',
+                        new_expire.isoformat())
+
+            return new_expire, result
+        finally:
+            AM_I_RUNNING = False
+
+    def _next_expire(self):
         new_expire_in = INTERVAL + randint(0, INTERVAL_VARIANCE)
-        new_expire = datetime.utcnow() + timedelta(seconds=new_expire_in)
-
-        logger.info('Next health check in %s seconds', new_expire.isoformat())
-
-        return new_expire, result
+        return datetime.utcnow() + timedelta(seconds=new_expire_in)
 
     def _get_pages(self):
         logger.debug('Checking a list of given paths')
