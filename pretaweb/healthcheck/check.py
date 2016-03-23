@@ -45,11 +45,12 @@ class NotExpired(Exception):
 
 
 class PloneLoader(object):
-    def __init__(self, base, host, uses_https, url):
+    def __init__(self, base, host, uses_https, deep, url):
         self.start_url = url
         self.base = base
         self.host = host
         self.uses_https = uses_https
+        self.deep = deep
         self.urls = set()
 
     def _request(self, url, raises):
@@ -170,6 +171,9 @@ class PloneLoader(object):
         logger.info('Plone site %s, Status %s',
                     self.start_url, response.getStatus())
 
+        if not self.deep:
+            return
+
         try:
             tree = etree.parse(StringIO(body), etree.HTMLParser())
         except etree.XMLSyntaxError:
@@ -216,6 +220,7 @@ class HealthCheck(object):
                  base,
                  host,
                  use_https,
+                 deep,
                  paths=None,
                  ):
         self.last_result = last_result
@@ -225,6 +230,7 @@ class HealthCheck(object):
         self.base = base
         self.host = host
         self.use_https = use_https
+        self.deep = deep
         self.paths = paths
 
     def __call__(self):
@@ -303,5 +309,9 @@ class HealthCheck(object):
 
     def _wake_plone(self, plone):
         url = '/'.join(plone.getPhysicalPath())
-        plone_loader = PloneLoader(self.base, self.host, self.use_https, url)
+        plone_loader = PloneLoader(base=self.base,
+                                   host=self.host,
+                                   uses_https=self.use_https,
+                                   deep=self.deep,
+                                   url=url)
         plone_loader()

@@ -28,6 +28,7 @@ def test_first_run():
                           base=None,
                           host=None,
                           use_https=False,
+                          deep=True,
                           paths=None,
                           )
     new_expire, result = checker()
@@ -43,6 +44,7 @@ def test_cached_run():
                           base=None,
                           host=None,
                           use_https=False,
+                          deep=True,
                           paths=None,
                           )
     pytest.raises(NotExpired, checker)
@@ -58,6 +60,7 @@ def test_avoid_parallel_runs(monkeypatch):
                           base=None,
                           host=None,
                           use_https=False,
+                          deep=True,
                           paths=None,
                           )
     pytest.raises(NotExpired, checker)
@@ -71,6 +74,7 @@ def test_recheck_checks_one():
                           base=None,
                           host=None,
                           use_https=False,
+                          deep=True,
                           paths=None,
                           )
 
@@ -101,6 +105,7 @@ def test_full_check_after_unhealthy_check():
                           base=None,
                           host=None,
                           use_https=False,
+                          deep=True,
                           paths=None,
                           )
 
@@ -130,6 +135,7 @@ def test_check_does_not_handle_conflict_error():
                           base=None,
                           host=None,
                           use_https=False,
+                          deep=True,
                           paths=None,
                           )
 
@@ -149,6 +155,7 @@ def test_check_does_handle_other_exceptions():
                           base=None,
                           host=None,
                           use_https=False,
+                          deep=True,
                           paths=None,
                           )
 
@@ -170,6 +177,7 @@ def test_get_pages_handles_empty():
                           base=None,
                           host=None,
                           use_https=False,
+                          deep=True,
                           paths=None,
                           )
 
@@ -194,6 +202,7 @@ def test_get_plone_navroots(monkeypatch):
                           base=None,
                           host=None,
                           use_https=False,
+                          deep=True,
                           paths=None,
                           )
 
@@ -213,6 +222,7 @@ def test_get_plone_site_root_and_nav_root(monkeypatch):
                           base=None,
                           host=None,
                           use_https=False,
+                          deep=True,
                           paths=None,
                           )
 
@@ -232,6 +242,7 @@ def test_get_plone_navroots_multilingual(monkeypatch):
                           base=None,
                           host=None,
                           use_https=False,
+                          deep=True,
                           paths=None,
                           )
 
@@ -254,6 +265,7 @@ def test_get_plone_from_paths():
                           base=None,
                           host=None,
                           use_https=False,
+                          deep=True,
                           paths=['/a', '/missing'],
                           )
 
@@ -270,7 +282,7 @@ def test_wake_plone(monkeypatch):
     urls_gotten = []
 
     class PloneLoader(object):
-        def __init__(self, base, host, use_https, url):
+        def __init__(self, base, host, uses_https, deep, url):
             urls_gotten.append(url)
 
         def __call__(self):
@@ -286,6 +298,7 @@ def test_wake_plone(monkeypatch):
                           base=None,
                           host=None,
                           use_https=False,
+                          deep=True,
                           paths=None,
                           )
     checker._wake_plone(FakePloneObj())

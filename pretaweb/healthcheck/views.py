@@ -18,7 +18,7 @@ CHECK_IN_PROGRESS = False
 
 class HealthCheckView(BrowserView):
 
-    def __call__(self, paths=None):
+    def __call__(self, paths=None, deep=True):
         environ = self.request.environ
         context = self.context
 

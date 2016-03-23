@@ -36,30 +36,33 @@ def make_subrequester(monkeypatch, status, response, **special_replies):
 
 
 def test_plone_loader(monkeypatch):
-    loader = PloneLoader('http://example.com',
-                         'example.com',
-                         False,
-                         'http://example.com')
+    loader = PloneLoader(base='http://example.com',
+                         host='example.com',
+                         uses_https=False,
+                         deep=True,
+                         url='http://example.com')
     subrequest_memory = make_subrequester(monkeypatch, 200, '')
     loader()
     assert ['http://example.com'] == subrequest_memory
 
 
 def test_plone_loader_no_fail_on_401(monkeypatch):
-    loader = PloneLoader('http://example.com',
-                         'example.com',
-                         False,
-                         'http://example.com')
+    loader = PloneLoader(base='http://example.com',
+                         host='example.com',
+                         uses_https=False,
+                         deep=True,
+                         url='http://example.com')
     make_subrequester(monkeypatch, 401, '')
     loader()
     assert True
 
 
 def test_plone_loader_failed(monkeypatch):
-    loader = PloneLoader('http://example.com',
-                         'example.com',
-                         False,
-                         'http://example.com')
+    loader = PloneLoader(base='http://example.com',
+                         host='example.com',
+                         uses_https=False,
+                         deep=True,
+                         url='http://example.com')
     make_subrequester(monkeypatch, 599, '')
     try:
         loader()
@@ -82,16 +85,37 @@ def test_plone_loader_with_urls(monkeypatch):
   </body>
 </html>
 '''
-    loader = PloneLoader('http://example.com',
-                         'example.com',
-                         False,
-                         'http://example.com')
+    loader = PloneLoader(base='http://example.com',
+                         host='example.com',
+                         uses_https=False,
+                         deep=True,
+                         url='http://example.com')
     subrequest_memory = make_subrequester(monkeypatch, 200, plone_body)
     loader()
     assert ['http://example.com',
             '/a',
             '/b',
             '/c'] == subrequest_memory
+
+
+def test_plone_loader_no_deep_ignores_urls(monkeypatch):
+    plone_body = '''
+<html>
+  <body>
+    <div>
+      <a href="/a"></a>
+    </div>
+  </body>
+</html>
+'''
+    loader = PloneLoader(base='http://example.com',
+                         host='example.com',
+                         uses_https=False,
+                         deep=False,
+                         url='http://example.com')
+    subrequest_memory = make_subrequester(monkeypatch, 200, plone_body)
+    loader()
+    assert ['http://example.com'] == subrequest_memory
 
 
 @pytest.mark.parametrize('url,status_code,expected', (
@@ -105,10 +129,11 @@ def test_plone_loader_with_urls(monkeypatch):
     ('/a', 599, ['/a']),
 ))
 def test_wake_resource(monkeypatch, status_code, url, expected):
-    loader = PloneLoader('http://example.com',
-                         'example.com',
-                         False,
-                         'http://example.com')
+    loader = PloneLoader(base='http://example.com',
+                         host='example.com',
+                         uses_https=False,
+                         deep=True,
+                         url='http://example.com')
     subrequest_memory = make_subrequester(monkeypatch, 200, 'xx',
                                           **{url: (status_code, {}, '')})
 
@@ -129,10 +154,11 @@ def test_wake_resource(monkeypatch, status_code, url, expected):
 ))
 def test_wake_css_resource(monkeypatch, url, content, content_type,
                            expected):
-    loader = PloneLoader('http://example.com',
-                         'example.com',
-                         False,
-                         'http://example.com')
+    loader = PloneLoader(base='http://example.com',
+                         host='example.com',
+                         uses_https=False,
+                         deep=True,
+                         url='http://example.com')
     other_urls = {url: (200, {'content-type': content_type}, content),
                   '/image': (200, {}, '')}
     subrequest_memory = make_subrequester(monkeypatch, 200, content,
@@ -162,10 +188,11 @@ def test_plone_loader_finds_css(monkeypatch):
   </body>
 </html>
 '''
-    loader = PloneLoader('http://example.com',
-                         'example.com',
-                         False,
-                         'http://example.com')
+    loader = PloneLoader(base='http://example.com',
+                         host='example.com',
+                         uses_https=False,
+                         deep=True,
+                         url='http://example.com')
     ignore_link = 'url(/dontfollow)'
     follow_link = 'url(/follow_me)'
     bad_link = 'url(#xx)'
@@ -207,27 +234,30 @@ def test_plone_loader_finds_css(monkeypatch):
     ('bla', '/ex/bla'),
 ))
 def test_normalize_link(url, expected):
-    loader = PloneLoader('http://example.com',
-                         'example.com',
-                         False,
-                         'http://example.com')
+    loader = PloneLoader(base='http://example.com',
+                         host='example.com',
+                         uses_https=False,
+                         deep=True,
+                         url='http://example.com')
 
     assert expected == loader._normalize_link('http://example.com/ex', url)
 
 
 def test_normalize_link_https():
-    loader = PloneLoader('http://example.com',
-                         'example.com',
-                         False,
-                         'http://example.com')
+    loader = PloneLoader(base='http://example.com',
+                         host='example.com',
+                         uses_https=False,
+                         deep=True,
+                         url='http://example.com')
 
     assert '/ex2' == loader._normalize_link('https://example.com/ex', '/ex2')
 
 
 def test_normalize_link_relative_ref_link():
-    loader = PloneLoader('http://example.com',
-                         'example.com',
-                         False,
-                         'http://example.com')
+    loader = PloneLoader(base='http://example.com',
+                         host='example.com',
+                         uses_https=False,
+                         deep=True,
+                         url='http://example.com')
 
     assert '/ex/ex2' == loader._normalize_link('/ex', 'ex2')

@@ -75,6 +75,10 @@ If you do not want to warm up every single Plone site / navigation root, you can
 
 Would load all resources of the english front page and the one expensive page deep down your site.
 
+If you trust that your cache will cache all images and css files, you can tell the healthcheck not to load these resources::
+
+    http://yourserver:port/@@healthcheck?deep:boolean=False
+
 Failure modes
 -------------
 
