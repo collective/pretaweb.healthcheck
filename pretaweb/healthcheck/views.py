@@ -10,7 +10,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-CACHED_HEALTH_CHECK_RESULT = STATUS_ERROR
+CACHED_HEALTH_CHECK_RESULT = 503
 HEALTH_CHECK_NEXT_EXPIRE = datetime.utcnow() - timedelta(seconds=1)
 
 CHECK_IN_PROGRESS = False
