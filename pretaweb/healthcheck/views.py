@@ -46,6 +46,7 @@ class HealthCheckView(BrowserView):
                                    base=self.request.base,
                                    host=environ.get('HTTP_HOST', ''),
                                    use_https=use_https,
+                                   deep=deep,
                                    paths=paths,
                                    )
 
